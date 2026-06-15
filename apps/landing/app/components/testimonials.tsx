@@ -12,7 +12,7 @@ export function Testimonials() {
     name: t(`testimonial.${i + 1}.name`),
     city: t(`testimonial.${i + 1}.city`),
     text: t(`testimonial.${i + 1}.text`),
-    rating: ratings[i],
+    rating: ratings[i] ?? 5,
   }));
 
   return (
