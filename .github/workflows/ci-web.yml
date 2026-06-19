@@ -1,0 +1,51 @@
+name: CI — Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/app/**"
+      - "apps/backoffice/**"
+      - "apps/landing/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".github/workflows/ci-web.yml"
+  pull_request:
+    paths:
+      - "apps/app/**"
+      - "apps/backoffice/**"
+      - "apps/landing/**"
+      - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".github/workflows/ci-web.yml"
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm turbo run lint --filter=!api
+
+      - name: Type check
+        run: pnpm turbo run check-types --filter=!api
+
+      - name: Build
+        run: pnpm turbo run build --filter=!api
