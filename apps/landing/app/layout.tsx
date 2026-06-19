@@ -9,6 +9,8 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://polozi.rs"),
+  alternates: { canonical: "/" },
   title: "Položi! — Priprema za vozački ispit u Srbiji",
   description:
     "Besplatna aplikacija za pripremu vozačkog ispita. Vežbaj pitanja, simuliraj ispit, pronađi auto školu.",

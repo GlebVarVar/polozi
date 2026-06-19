@@ -1,0 +1,96 @@
+version: '3'
+
+# polozi-monorepo task runner
+#   task            -> db + backend + main app + backoffice (core dev stack)
+#   task all        -> everything incl. landing
+#   task api        -> Rust backend            :3001  (/swagger)
+#   task app        -> main web app            :3002
+#   task backoffice -> admin backoffice        :3003
+#   task landing    -> marketing landing       :3000
+#   task db:up      -> start postgres
+#   task down       -> stop postgres
+
+vars:
+  COMPOSE: docker compose
+  PG_USER: polozi
+
+tasks:
+  default:
+    desc: Start db, backend, main app and backoffice together
+    deps: [api, app, backoffice]
+
+  all:
+    desc: Start the whole stack incl. landing
+    deps: [api, app, backoffice, landing]
+
+  install:
+    desc: Install JS dependencies
+    cmds:
+      - pnpm install
+
+  db:up:
+    desc: Start postgres (detached)
+    cmds:
+      - '{{.COMPOSE}} up -d postgres'
+
+  db:wait:
+    desc: Wait until postgres is accepting connections
+    deps: [db:up]
+    cmds:
+      - |
+        echo "waiting for postgres..."
+        for i in $(seq 1 60); do
+          if {{.COMPOSE}} exec -T postgres pg_isready -U {{.PG_USER}} >/dev/null 2>&1; then
+            echo "postgres is ready"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "postgres did not become ready in time" >&2
+        exit 1
+
+  db:down:
+    desc: Stop postgres
+    cmds:
+      - '{{.COMPOSE}} stop postgres'
+
+  db:reset:
+    desc: Wipe postgres data and recreate it
+    cmds:
+      - '{{.COMPOSE}} down -v'
+      - task: db:wait
+
+  api:
+    desc: 'Run the Rust backend (:3001, waits for db)'
+    deps: [db:wait]
+    dir: apps/api
+    cmds:
+      - cargo run
+
+  app:
+    desc: 'Run the main web app (:3002)'
+    dir: apps/app
+    cmds:
+      - pnpm dev
+
+  backoffice:
+    desc: 'Run the admin backoffice (:3003)'
+    dir: apps/backoffice
+    cmds:
+      - pnpm dev
+
+  landing:
+    desc: 'Run the marketing landing (:3000)'
+    dir: apps/landing
+    cmds:
+      - pnpm dev
+
+  build:
+    desc: Build all apps (turbo) + release backend
+    cmds:
+      - pnpm build
+
+  down:
+    desc: Stop all docker services
+    cmds:
+      - '{{.COMPOSE}} down'

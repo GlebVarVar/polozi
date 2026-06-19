@@ -10,6 +10,64 @@ services:
       POSTGRES_DB: polozi
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U polozi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgres://polozi:polozi@postgres:5432/polozi
+      PORT: "3001"
+      RUST_LOG: ${RUST_LOG:-info}
+      JWT_SECRET: ${JWT_SECRET:-dev-insecure-secret-change-me}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        APP: app
+        NEXT_PUBLIC_API_URL: ${API_URL:-http://localhost:3001}
+    restart: unless-stopped
+    ports:
+      - "3002:80"
+    depends_on:
+      - api
+
+  backoffice:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        APP: backoffice
+        NEXT_PUBLIC_API_URL: ${API_URL:-http://localhost:3001}
+    restart: unless-stopped
+    ports:
+      - "3003:80"
+    depends_on:
+      - api
+
+  landing:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        APP: landing
+    restart: unless-stopped
+    ports:
+      - "3000:80"
 
 volumes:
   postgres_data:

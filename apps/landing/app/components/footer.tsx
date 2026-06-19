@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useLocale } from "../../lib/locale-context";
 
 export function Footer() {
@@ -53,6 +54,18 @@ export function Footer() {
               >
                 info@polozi.rs
               </a>
+              <Link
+                href="/support/"
+                className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {t("footer.support")}
+              </Link>
+              <Link
+                href="/privacy/"
+                className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {t("footer.privacy")}
+              </Link>
             </div>
           </div>
         </div>

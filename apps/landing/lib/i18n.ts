@@ -120,6 +120,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "footer.nav": "Navigacija",
     "footer.contact": "Kontakt",
     "footer.rights": "Sva prava zadržana.",
+    "footer.legal": "Pravno",
+    "footer.privacy": "Politika privatnosti",
+    "footer.support": "Podrška",
   },
 
   ru: {
@@ -218,6 +221,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "footer.nav": "Навигация",
     "footer.contact": "Контакты",
     "footer.rights": "Все права защищены.",
+    "footer.legal": "Правовое",
+    "footer.privacy": "Политика конфиденциальности",
+    "footer.support": "Поддержка",
   },
 
   en: {
@@ -316,6 +322,9 @@ const translations: Record<Locale, Record<string, string>> = {
     "footer.nav": "Navigation",
     "footer.contact": "Contact",
     "footer.rights": "All rights reserved.",
+    "footer.legal": "Legal",
+    "footer.privacy": "Privacy Policy",
+    "footer.support": "Support",
   },
 };
 

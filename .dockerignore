@@ -1,0 +1,13 @@
+**/node_modules
+**/.next
+**/out
+**/dist
+**/.turbo
+**/target
+.git
+.github
+certs
+**/.env
+**/.env.*
+**/*.log
+.DS_Store
