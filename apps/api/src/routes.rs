@@ -192,7 +192,7 @@ pub async fn get_question(
     .fetch_optional(&pool)
     .await?
     .ok_or(AppError::NotFound)?;
-    let answers = load_answers(&pool, &[row.id.clone()]).await?;
+    let answers = load_answers(&pool, std::slice::from_ref(&row.id)).await?;
     Ok(Json(assemble(vec![row], answers).pop().unwrap()))
 }
 

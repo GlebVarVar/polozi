@@ -49,7 +49,7 @@ async fn seed_content(pool: &PgPool) -> anyhow::Result<()> {
         .bind(id)
         .bind(name)
         .bind(icon)
-        .bind(order as i32)
+        .bind(order)
         .execute(pool)
         .await?;
     }
@@ -127,7 +127,7 @@ async fn seed_content(pool: &PgPool) -> anyhow::Result<()> {
         sqlx::query(
             "INSERT INTO schools (id, name, city, address, phone, price_from, price_to, website) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
         )
-        .bind(id).bind(name).bind(city).bind(addr).bind(phone).bind(from as i32).bind(to as i32).bind(website)
+        .bind(id).bind(name).bind(city).bind(addr).bind(phone).bind(from).bind(to).bind(website)
         .execute(pool).await?;
     }
 
