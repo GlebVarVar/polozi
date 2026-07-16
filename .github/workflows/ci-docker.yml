@@ -41,11 +41,11 @@ jobs:
             context: ./apps/api
             dockerfile: ./apps/api/Dockerfile
             build_args: ""
-          # - image: app
-          #   registry: ghcr.io
-          #   context: .
-          #   dockerfile: ./Dockerfile.web
-          #   build_args: APP=app
+          - image: app
+            registry: registry.dicedev.rs
+            context: .
+            dockerfile: ./Dockerfile.web
+            build_args: APP=app
           - image: backoffice
             registry: registry.dicedev.rs
             context: .
