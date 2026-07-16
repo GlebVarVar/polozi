@@ -23,7 +23,9 @@ on:
       - "pnpm-lock.yaml"
       - ".github/workflows/ci-docker.yml"
 
-# On PRs: build only (validate Dockerfiles). On main: build + push to GHCR.
+# On PRs: build only (validate Dockerfiles). On main: build + push.
+# api/backoffice go to the self-hosted registry (needs REGISTRY_USERNAME /
+# REGISTRY_PASSWORD repo secrets matching its htpasswd); app/landing stay on GHCR.
 jobs:
   images:
     runs-on: ubuntu-latest
@@ -35,38 +37,47 @@ jobs:
       matrix:
         include:
           - image: api
+            registry: registry.dicedev.rs
             context: ./apps/api
             dockerfile: ./apps/api/Dockerfile
             build_args: ""
-          - image: app
-            context: .
-            dockerfile: ./Dockerfile.web
-            build_args: APP=app
+          # - image: app
+          #   registry: ghcr.io
+          #   context: .
+          #   dockerfile: ./Dockerfile.web
+          #   build_args: APP=app
           - image: backoffice
+            registry: registry.dicedev.rs
             context: .
             dockerfile: ./Dockerfile.web
             build_args: APP=backoffice
-          - image: landing
-            context: .
-            dockerfile: ./Dockerfile.web
-            build_args: APP=landing
+          # - image: landing
+          #   registry: ghcr.io
+          #   context: .
+          #   dockerfile: ./Dockerfile.web
+          #   build_args: APP=landing
     steps:
       - uses: actions/checkout@v5
 
       - uses: docker/setup-buildx-action@v3
 
       # GHCR repository names must be lowercase; the owner may contain uppercase.
-      - name: Compute lowercase image name
+      - name: Compute image name
         id: img
-        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/polozi-${{ matrix.image }}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ "${{ matrix.registry }}" = "ghcr.io" ]; then
+            echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/polozi-${{ matrix.image }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ matrix.registry }}/polozi/${{ matrix.image }}" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Log in to GHCR
+      - name: Log in to ${{ matrix.registry }}
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ${{ matrix.registry }}
+          username: ${{ matrix.registry == 'ghcr.io' && github.actor || secrets.REGISTRY_USERNAME }}
+          password: ${{ matrix.registry == 'ghcr.io' && secrets.GITHUB_TOKEN || secrets.REGISTRY_PASSWORD }}
 
       - name: Build${{ github.event_name != 'pull_request' && ' and push' || '' }} ${{ matrix.image }}
         uses: docker/build-push-action@v6
