@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AuthProvider } from "../lib/auth";
 import { SettingsProvider } from "../lib/settings";
 import "./globals.css";
 
@@ -31,7 +32,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="font-sans antialiased bg-background text-foreground">
-        <SettingsProvider>{children}</SettingsProvider>
+        <SettingsProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </SettingsProvider>
       </body>
     </html>
   );

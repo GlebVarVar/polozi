@@ -6,6 +6,7 @@ import { Dialog } from "@repo/ui/dialog";
 import { cn } from "@repo/ui/lib/cn";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
+import { AccountCard } from "../../components/account-card";
 import { AppShell } from "../../components/app-shell";
 import { PageHeader } from "../../components/states";
 import { localeNames, locales } from "../../lib/i18n";
@@ -107,6 +108,8 @@ export default function SettingsPage() {
       <PageHeader title={t("settings.title")} />
 
       <div className="space-y-4">
+        <AccountCard />
+
         <Card>
           <CardContent className="space-y-6 p-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

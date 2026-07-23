@@ -20,6 +20,26 @@ export interface ExamSessionRecord {
 const ATTEMPTS_KEY = "polozi.attempts";
 const EXAMS_KEY = "polozi.exams";
 
+// --- change notifications (used by the auth layer to sync to the server) ---
+
+const listeners = new Set<() => void>();
+
+/** Subscribe to any local progress change. Returns an unsubscribe function. */
+export function subscribeProgress(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+function notifyProgressChange() {
+  for (const fn of listeners) {
+    try {
+      fn();
+    } catch {
+      /* ignore listener errors */
+    }
+  }
+}
+
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
@@ -43,6 +63,7 @@ export function recordAttempt(a: Attempt) {
   const all = getAttempts();
   all.push(a);
   write(ATTEMPTS_KEY, all);
+  notifyProgressChange();
 }
 
 /** Questions whose latest attempt was wrong. */
@@ -90,6 +111,7 @@ export function addExamSession(s: ExamSessionRecord) {
   const all = read<ExamSessionRecord[]>(EXAMS_KEY, []);
   all.push(s);
   write(EXAMS_KEY, all);
+  notifyProgressChange();
 }
 
 export function getLatestExam(): ExamSessionRecord | undefined {
@@ -100,4 +122,45 @@ export function clearProgress() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(ATTEMPTS_KEY);
   localStorage.removeItem(EXAMS_KEY);
+  notifyProgressChange();
+}
+
+// --- server-sync helpers (whole progress state as one blob) ---
+
+export interface ProgressBlob {
+  attempts: Attempt[];
+  exams: ExamSessionRecord[];
+}
+
+export function getProgressBlob(): ProgressBlob {
+  return { attempts: getAttempts(), exams: getExamSessions() };
+}
+
+/** Merge two progress blobs, de-duplicating events. Append-only, so a union is safe. */
+export function mergeProgressBlobs(
+  a: ProgressBlob,
+  b: ProgressBlob,
+): ProgressBlob {
+  const attemptKey = (x: Attempt) =>
+    `${x.questionId}|${x.date}|${x.isCorrect ? 1 : 0}`;
+  const examKey = (x: ExamSessionRecord) =>
+    `${x.date}|${x.correctAnswers}|${x.totalQuestions}`;
+
+  const attempts = new Map<string, Attempt>();
+  for (const x of [...a.attempts, ...b.attempts]) attempts.set(attemptKey(x), x);
+  const exams = new Map<string, ExamSessionRecord>();
+  for (const x of [...a.exams, ...b.exams]) exams.set(examKey(x), x);
+
+  return {
+    attempts: [...attempts.values()].sort((x, y) => x.date - y.date),
+    exams: [...exams.values()].sort((x, y) => y.date - x.date),
+  };
+}
+
+/** Overwrite local progress with the given blob (used after a server merge). */
+export function replaceProgress(blob: ProgressBlob) {
+  if (typeof window === "undefined") return;
+  write(ATTEMPTS_KEY, blob.attempts ?? []);
+  write(EXAMS_KEY, blob.exams ?? []);
+  notifyProgressChange();
 }

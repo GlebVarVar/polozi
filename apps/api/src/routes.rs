@@ -6,7 +6,7 @@ use serde::Deserialize;
 use sqlx::PgPool;
 
 use crate::{
-    auth::AdminUser,
+    auth::{AdminUser, AuthUser},
     error::{AppError, AppResult},
     models::*,
 };
@@ -493,4 +493,37 @@ pub async fn add_review(
     .fetch_one(&pool)
     .await?;
     Ok(Json(row))
+}
+
+// ===================== User progress (app users) =====================
+
+/// GET /api/account/progress — the signed-in user's saved progress blob.
+/// Returns `{}` when nothing has been synced yet.
+pub async fn get_progress(
+    user: AuthUser,
+    State(pool): State<PgPool>,
+) -> AppResult<Json<serde_json::Value>> {
+    let row: Option<(serde_json::Value,)> =
+        sqlx::query_as("SELECT data FROM user_progress WHERE user_id = $1")
+            .bind(user.0)
+            .fetch_optional(&pool)
+            .await?;
+    Ok(Json(row.map(|(d,)| d).unwrap_or_else(|| serde_json::json!({}))))
+}
+
+/// PUT /api/account/progress — replace the signed-in user's progress blob.
+pub async fn put_progress(
+    user: AuthUser,
+    State(pool): State<PgPool>,
+    Json(data): Json<serde_json::Value>,
+) -> AppResult<Json<serde_json::Value>> {
+    sqlx::query(
+        "INSERT INTO user_progress (user_id, data, updated_at) VALUES ($1, $2, now())
+         ON CONFLICT (user_id) DO UPDATE SET data = $2, updated_at = now()",
+    )
+    .bind(user.0)
+    .bind(&data)
+    .execute(&pool)
+    .await?;
+    Ok(Json(data))
 }

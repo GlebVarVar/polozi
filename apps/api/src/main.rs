@@ -55,6 +55,7 @@ impl Modify for SecurityAddon {
     paths(
         health,
         auth::login,
+        auth::register, auth::user_login,
         routes::list_categories, routes::create_category, routes::update_category, routes::delete_category,
         routes::list_questions, routes::get_question, routes::create_question, routes::update_question, routes::delete_question,
         routes::list_schools, routes::list_cities, routes::get_school, routes::create_school, routes::update_school, routes::delete_school,
@@ -68,6 +69,7 @@ impl Modify for SecurityAddon {
         models::School, models::SchoolDetail, models::SchoolInput,
         models::Review, models::ReviewInput,
         models::LoginInput, models::LoginResponse,
+        models::UserAuthInput, models::AuthResponse,
     ))
 )]
 struct ApiDoc;
@@ -103,6 +105,13 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/health", get(health))
         .route("/api/auth/login", post(auth::login))
+        // app-user accounts + progress sync
+        .route("/api/account/register", post(auth::register))
+        .route("/api/account/login", post(auth::user_login))
+        .route(
+            "/api/account/progress",
+            get(routes::get_progress).put(routes::put_progress),
+        )
         // public content
         .route("/api/categories", get(routes::list_categories))
         .route("/api/questions", get(routes::list_questions))

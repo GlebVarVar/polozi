@@ -172,7 +172,7 @@ pub struct ReviewInput {
     pub author_name: String,
 }
 
-// ---------- Auth ----------
+// ---------- Auth (backoffice admins) ----------
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct LoginInput {
@@ -183,4 +183,20 @@ pub struct LoginInput {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct LoginResponse {
     pub token: String,
+}
+
+// ---------- Auth (app users) ----------
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UserAuthInput {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthResponse {
+    pub token: String,
+    pub email: String,
 }
