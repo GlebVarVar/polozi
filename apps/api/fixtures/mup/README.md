@@ -10,8 +10,19 @@ theory exam (categories A/B/C/D).
 - `parse.py` — extracts them to structured JSON (`pdftotext -bbox-layout` +
   a column/anchor reconstruction; see the module docstring)
 - `questions.json` — **2315 questions**, the parser output
+- `gen_migration.py` — turns `questions.json` into the sqlx data migration
+  `../../migrations/0003_mup_questions.sql`
 
-Re-run with: `python3 parse.py` (needs `pdftotext` from poppler-utils).
+Rebuild the data end-to-end:
+
+```bash
+python3 parse.py          # PDFs  -> questions.json   (needs poppler `pdftotext`)
+python3 gen_migration.py  # JSON  -> 0003_mup_questions.sql
+```
+
+The migration is applied automatically by the API on startup (`sqlx::migrate!`),
+version-tracked and lock-safe across replicas. It also deletes the old demo
+categories; `seed.rs` no longer seeds questions (only the admin user + schools).
 
 ## Record shape
 

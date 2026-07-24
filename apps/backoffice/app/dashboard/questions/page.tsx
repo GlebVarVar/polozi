@@ -20,10 +20,6 @@ const TYPE_LABEL: Record<QuestionType, string> = {
   openText: "Open text",
 };
 
-function truncate(text: string, n = 70) {
-  return text.length > n ? `${text.slice(0, n)}…` : text;
-}
-
 export default function QuestionsPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -87,23 +83,31 @@ export default function QuestionsPage() {
         }
       />
 
-      <div className="mb-4 flex items-center gap-2">
-        <Label htmlFor="q-filter" className="text-muted-foreground">
-          Category
-        </Label>
-        <Select
-          id="q-filter"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="w-56"
-        >
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </Select>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="q-filter" className="text-muted-foreground">
+            Category
+          </Label>
+          <Select
+            id="q-filter"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="w-56"
+          >
+            <option value="">All categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        {!loading && !error ? (
+          <span className="text-sm text-muted-foreground">
+            {questions.length.toLocaleString()}{" "}
+            {questions.length === 1 ? "question" : "questions"}
+          </span>
+        ) : null}
       </div>
 
       {loading ? (
@@ -128,18 +132,26 @@ export default function QuestionsPage() {
           <TBody>
             {questions.map((q) => (
               <TR key={q.id}>
-                <TD className="font-mono text-xs text-muted-foreground">
-                  {q.id}
+                <TD>
+                  <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
+                    {q.id}
+                  </span>
                 </TD>
-                <TD className="max-w-xs">{truncate(q.text)}</TD>
-                <TD className="whitespace-nowrap">
-                  {categoryName(q.categoryId)}
+                <TD className="max-w-[18rem]">
+                  <span className="line-clamp-2 text-foreground">{q.text}</span>
+                </TD>
+                <TD className="text-muted-foreground">
+                  <span className="line-clamp-1 max-w-[11rem]">
+                    {categoryName(q.categoryId)}
+                  </span>
                 </TD>
                 <TD>
                   <Badge variant="secondary">{TYPE_LABEL[q.type]}</Badge>
                 </TD>
-                <TD className="tabular-nums">{q.difficulty}</TD>
-                <TD className="tabular-nums">
+                <TD className="tabular-nums text-muted-foreground">
+                  {q.difficulty}
+                </TD>
+                <TD className="tabular-nums text-muted-foreground">
                   {q.type === "openText" ? "—" : q.answers.length}
                 </TD>
                 <TD>

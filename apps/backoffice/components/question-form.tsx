@@ -190,10 +190,7 @@ export function QuestionForm({
       title={isEdit ? "Edit question" : "Add question"}
       className="max-w-2xl"
     >
-      <form
-        onSubmit={handleSubmit}
-        className="flex max-h-[75vh] flex-col gap-4 overflow-y-auto pr-1"
-      >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="q-id">ID</Label>

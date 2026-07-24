@@ -42,11 +42,11 @@ export function Dialog({
       />
       <div
         className={cn(
-          "relative z-10 w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-xl",
+          "relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border border-border bg-card shadow-xl",
           className,
         )}
       >
-        <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-6 py-4">
           {title ? (
             <h2 className="text-lg font-semibold">{title}</h2>
           ) : (
@@ -55,13 +55,13 @@ export function Dialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="-mr-1 rounded-lg p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             aria-label="Close"
           >
             <X className="size-5" />
           </button>
         </div>
-        {children}
+        <div className="overflow-y-auto p-6">{children}</div>
       </div>
     </div>
   );

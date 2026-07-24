@@ -27,5 +27,12 @@ sqlx = { version = "0.8", features = [
 chrono = { version = "0.4", features = ["serde"] }
 jsonwebtoken = "9"
 argon2 = "0.5"
+totp-rs = { version = "5", default-features = false, features = [
+    "otpauth",
+    "gen_secret",
+] }
 dotenvy = "0.15"
 anyhow = "1"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

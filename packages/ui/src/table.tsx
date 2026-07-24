@@ -6,7 +6,7 @@ export function Table({
   ...props
 }: React.HTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto rounded-xl border border-border">
+    <div className="w-full overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
       <table
         className={cn("w-full caption-bottom text-sm", className)}
         {...props}
@@ -21,7 +21,10 @@ export function THead({
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <thead
-      className={cn("bg-muted/50 [&_th]:text-muted-foreground", className)}
+      className={cn(
+        "border-b border-border bg-muted/40 [&_th]:text-muted-foreground",
+        className,
+      )}
       {...props}
     />
   );
@@ -33,7 +36,10 @@ export function TBody({
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <tbody
-      className={cn("[&_tr:last-child]:border-0", className)}
+      className={cn(
+        "divide-y divide-border [&_tr:last-child]:border-0",
+        className,
+      )}
       {...props}
     />
   );
@@ -45,10 +51,7 @@ export function TR({
 }: React.HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
-      className={cn(
-        "border-b border-border transition-colors hover:bg-muted/40",
-        className,
-      )}
+      className={cn("transition-colors hover:bg-muted/40", className)}
       {...props}
     />
   );
@@ -61,7 +64,7 @@ export function TH({
   return (
     <th
       className={cn(
-        "h-11 px-4 text-left align-middle font-medium",
+        "h-10 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide",
         className,
       )}
       {...props}

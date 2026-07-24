@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
-import { Select } from "@repo/ui/select";
+import { cn } from "@repo/ui/lib/cn";
 import { StarRating } from "@repo/ui/star-rating";
 import {
   ExternalLink,
@@ -169,8 +169,8 @@ function SchoolsList() {
     <>
       <PageHeader title={t("schools.title")} subtitle={t("schools.subtitle")} />
 
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
+      <div className="mb-5 space-y-3">
+        <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
@@ -179,18 +179,30 @@ function SchoolsList() {
             className="pl-9"
           />
         </div>
-        <Select
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          className="sm:w-52"
-        >
-          <option value="">{t("schools.allCities")}</option>
-          {(citiesState.data ?? []).map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {[
+            { value: "", label: t("schools.allCities") },
+            ...(citiesState.data ?? []).map((c) => ({ value: c, label: c })),
+          ].map((opt) => {
+            const active = city === opt.value;
+            return (
+              <button
+                key={opt.value || "all"}
+                type="button"
+                onClick={() => setCity(opt.value)}
+                aria-pressed={active}
+                className={cn(
+                  "shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground",
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {schoolsState.loading ? (

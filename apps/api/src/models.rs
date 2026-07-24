@@ -180,9 +180,34 @@ pub struct LoginInput {
     pub password: String,
 }
 
+/// Result of an admin login attempt. When the account has 2FA enabled, `token`
+/// is null and `mfaToken` carries a short-lived token to exchange for the real
+/// token via `/api/auth/login/2fa` together with a TOTP code.
 #[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct LoginResponse {
-    pub token: String,
+    pub token: Option<String>,
+    #[serde(rename = "requires2fa")]
+    pub requires_2fa: bool,
+    pub mfa_token: Option<String>,
+    pub twofa_enabled: bool,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct TwoFaCodeInput {
+    pub code: String,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct TwoFaSetupResponse {
+    pub secret: String,
+    pub otpauth_url: String,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct TwoFaStatusResponse {
+    pub enabled: bool,
 }
 
 // ---------- Auth (app users) ----------

@@ -63,12 +63,47 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
+export interface LoginResult {
+  token: string | null;
+  requires2fa: boolean;
+  mfaToken: string | null;
+  twofaEnabled: boolean;
+}
+
 export const api = {
   login: (username: string, password: string) =>
-    request<{ token: string }>("/api/auth/login", {
+    request<LoginResult>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     }),
+  loginVerify2fa: (mfaToken: string, code: string) =>
+    request<LoginResult>("/api/auth/login/2fa", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mfaToken}` },
+      body: JSON.stringify({ code }),
+    }),
+
+  // Two-factor auth (admin, requires an active session)
+  twofaStatus: () =>
+    request<{ enabled: boolean }>("/api/admin/2fa/status", {}, true),
+  twofaSetup: () =>
+    request<{ secret: string; otpauthUrl: string }>(
+      "/api/admin/2fa/setup",
+      { method: "POST" },
+      true,
+    ),
+  twofaEnable: (code: string) =>
+    request<{ enabled: boolean }>(
+      "/api/admin/2fa/enable",
+      { method: "POST", body: JSON.stringify({ code }) },
+      true,
+    ),
+  twofaDisable: (code: string) =>
+    request<{ enabled: boolean }>(
+      "/api/admin/2fa/disable",
+      { method: "POST", body: JSON.stringify({ code }) },
+      true,
+    ),
 
   // Categories
   listCategories: () => request<Category[]>("/api/categories"),

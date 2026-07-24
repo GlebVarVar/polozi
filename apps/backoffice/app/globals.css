@@ -1,1 +1,7 @@
 @import "@repo/ui/styles.css";
+
+/* Prefer the self-hosted Inter (next/font) loaded in the root layout, but keep
+   the shared theme's system stack as a graceful fallback. */
+:root {
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+}

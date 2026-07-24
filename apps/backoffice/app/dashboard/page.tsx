@@ -1,12 +1,7 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@repo/ui/card";
-import { Car, FolderTree, HelpCircle } from "lucide-react";
+import { Card, CardContent } from "@repo/ui/card";
+import { Car, ChevronRight, FolderTree, HelpCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ErrorState, LoadingState } from "../../components/data-state";
@@ -82,17 +77,20 @@ export default function OverviewPage() {
             const Icon = c.icon;
             return (
               <Link key={c.key} href={c.href} className="group">
-                <Card className="transition-shadow group-hover:shadow-md">
-                  <CardHeader className="flex-row items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {c.label}
-                    </CardTitle>
-                    <Icon className="size-5 text-primary" />
-                  </CardHeader>
-                  <CardContent>
-                    <span className="text-3xl font-bold tabular-nums">
-                      {counts[c.key]}
+                <Card className="shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:border-primary/30 group-hover:shadow-md">
+                  <CardContent className="flex items-center gap-4 p-6">
+                    <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
+                      <Icon className="size-6" />
                     </span>
+                    <div className="min-w-0">
+                      <div className="text-3xl font-bold tabular-nums leading-none">
+                        {counts[c.key].toLocaleString()}
+                      </div>
+                      <div className="mt-1.5 text-sm text-muted-foreground">
+                        {c.label}
+                      </div>
+                    </div>
+                    <ChevronRight className="ml-auto size-5 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
                   </CardContent>
                 </Card>
               </Link>

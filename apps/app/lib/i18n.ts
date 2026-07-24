@@ -10,7 +10,7 @@ export const localeNames: Record<Locale, string> = {
 
 const translations: Record<Locale, Record<string, string>> = {
   sr: {
-    "app.name": "Auto",
+    "app.name": "Položi!",
     "nav.home": "Početna",
     "nav.training": "Vežba",
     "nav.exam": "Ispit",
@@ -134,6 +134,15 @@ const translations: Record<Locale, Record<string, string>> = {
     "account.synced": "Napredak sačuvan",
     "account.syncError": "Greška pri sinhronizaciji",
 
+    "settings.section.appearance": "Izgled",
+    "settings.section.practice": "Vežba",
+    "settings.section.data": "Podaci",
+    "settings.autoAdvanceDesc":
+      "Automatski pređi na sledeće pitanje nakon tačnog odgovora",
+    "settings.shuffleDesc": "Prikaži odgovore nasumičnim redosledom",
+    "settings.resetDesc":
+      "Obriši sve pokušaje i rezultate ispita sa ovog uređaja",
+
     "common.loading": "Učitavanje...",
     "common.error": "Greška pri učitavanju",
     "common.cancel": "Otkaži",
@@ -143,7 +152,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "common.minutes": "min",
   },
   ru: {
-    "app.name": "Auto",
+    "app.name": "Položi!",
     "nav.home": "Главная",
     "nav.training": "Практика",
     "nav.exam": "Экзамен",
@@ -267,6 +276,15 @@ const translations: Record<Locale, Record<string, string>> = {
     "account.synced": "Прогресс сохранён",
     "account.syncError": "Ошибка синхронизации",
 
+    "settings.section.appearance": "Внешний вид",
+    "settings.section.practice": "Практика",
+    "settings.section.data": "Данные",
+    "settings.autoAdvanceDesc":
+      "Автоматически переходить к следующему вопросу после правильного ответа",
+    "settings.shuffleDesc": "Показывать варианты ответов в случайном порядке",
+    "settings.resetDesc":
+      "Удалить все попытки и результаты экзаменов с этого устройства",
+
     "common.loading": "Загрузка...",
     "common.error": "Ошибка загрузки",
     "common.cancel": "Отмена",
@@ -276,7 +294,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "common.minutes": "мин",
   },
   en: {
-    "app.name": "Auto",
+    "app.name": "Položi!",
     "nav.home": "Home",
     "nav.training": "Practice",
     "nav.exam": "Exam",
@@ -399,6 +417,15 @@ const translations: Record<Locale, Record<string, string>> = {
     "account.syncing": "Syncing...",
     "account.synced": "Progress saved",
     "account.syncError": "Sync error",
+
+    "settings.section.appearance": "Appearance",
+    "settings.section.practice": "Practice",
+    "settings.section.data": "Data",
+    "settings.autoAdvanceDesc":
+      "Automatically move to the next question after a correct answer",
+    "settings.shuffleDesc": "Show answer options in random order",
+    "settings.resetDesc":
+      "Delete all attempts and exam results from this device",
 
     "common.loading": "Loading...",
     "common.error": "Failed to load",

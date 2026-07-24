@@ -4,7 +4,7 @@ import { SettingsProvider } from "../lib/settings";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Auto — Priprema za vozački ispit",
+  title: "Položi! — Priprema za vozački ispit",
   description:
     "Vežbaj pitanja, simuliraj ispit, prati napredak i pronađi auto školu.",
 };

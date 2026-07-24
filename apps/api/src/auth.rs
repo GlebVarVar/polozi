@@ -13,10 +13,17 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
 
+use totp_rs::{Algorithm, Secret, TOTP};
+
 use crate::{
     error::AppError,
-    models::{AuthResponse, LoginInput, LoginResponse, UserAuthInput},
+    models::{
+        AuthResponse, LoginInput, LoginResponse, TwoFaCodeInput, TwoFaSetupResponse,
+        TwoFaStatusResponse, UserAuthInput,
+    },
 };
+
+const TOTP_ISSUER: &str = "Položi! Backoffice";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -50,8 +57,8 @@ fn verify_password(password: &str, hash: &str) -> bool {
     }
 }
 
-fn make_token(sub: &str, role: &str) -> Result<String, AppError> {
-    let exp = (Utc::now() + Duration::days(30)).timestamp() as usize;
+fn make_token_with(sub: &str, role: &str, ttl: Duration) -> Result<String, AppError> {
+    let exp = (Utc::now() + ttl).timestamp() as usize;
     let claims = Claims {
         sub: sub.to_string(),
         role: role.to_string(),
@@ -63,6 +70,54 @@ fn make_token(sub: &str, role: &str) -> Result<String, AppError> {
         &EncodingKey::from_secret(jwt_secret().as_bytes()),
     )
     .map_err(|e| AppError::Internal(e.to_string()))
+}
+
+fn make_token(sub: &str, role: &str) -> Result<String, AppError> {
+    make_token_with(sub, role, Duration::days(30))
+}
+
+// ---------- TOTP helpers ----------
+
+fn totp_from_secret(secret_b32: &str, account: &str) -> Result<TOTP, AppError> {
+    let bytes = Secret::Encoded(secret_b32.to_string())
+        .to_bytes()
+        .map_err(|_| AppError::Internal("invalid totp secret".into()))?;
+    TOTP::new(
+        Algorithm::SHA1,
+        6,
+        1, // skew: accept the adjacent 30s windows for clock drift
+        30,
+        bytes,
+        Some(TOTP_ISSUER.to_string()),
+        account.to_string(),
+    )
+    .map_err(|e| AppError::Internal(e.to_string()))
+}
+
+fn verify_totp(secret_b32: &str, account: &str, code: &str) -> Result<bool, AppError> {
+    let totp = totp_from_secret(secret_b32, account)?;
+    totp
+        .check_current(code.trim())
+        .map_err(|e| AppError::Internal(e.to_string()))
+}
+
+fn bearer(headers: &axum::http::HeaderMap) -> Option<String> {
+    headers
+        .get(axum::http::header::AUTHORIZATION)?
+        .to_str()
+        .ok()?
+        .strip_prefix("Bearer ")
+        .map(str::to_string)
+}
+
+fn decode_claims(token: &str) -> Result<Claims, AppError> {
+    decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(jwt_secret().as_bytes()),
+        &Validation::default(),
+    )
+    .map(|d| d.claims)
+    .map_err(|_| AppError::Unauthorized)
 }
 
 /// POST /api/auth/login
@@ -80,21 +135,168 @@ pub async fn login(
     axum::extract::State(pool): axum::extract::State<PgPool>,
     Json(input): Json<LoginInput>,
 ) -> Result<Json<LoginResponse>, AppError> {
-    let row: Option<(String,)> =
-        sqlx::query_as("SELECT password_hash FROM admins WHERE username = $1")
+    let row: Option<(String, bool)> =
+        sqlx::query_as("SELECT password_hash, totp_enabled FROM admins WHERE username = $1")
             .bind(&input.username)
             .fetch_optional(&pool)
             .await?;
 
-    let Some((hash,)) = row else {
+    let Some((hash, totp_enabled)) = row else {
         return Err(AppError::Unauthorized);
     };
     if !verify_password(&input.password, &hash) {
         return Err(AppError::Unauthorized);
     }
 
+    if totp_enabled {
+        // Password OK, but require a TOTP code. Hand back a short-lived token
+        // that only /api/auth/login/2fa accepts.
+        let mfa_token = make_token_with(&input.username, "mfa", Duration::minutes(5))?;
+        return Ok(Json(LoginResponse {
+            token: None,
+            requires_2fa: true,
+            mfa_token: Some(mfa_token),
+            twofa_enabled: true,
+        }));
+    }
+
     let token = make_token(&input.username, "admin")?;
-    Ok(Json(LoginResponse { token }))
+    Ok(Json(LoginResponse {
+        token: Some(token),
+        requires_2fa: false,
+        mfa_token: None,
+        twofa_enabled: false,
+    }))
+}
+
+/// POST /api/auth/login/2fa — exchange an MFA token + TOTP code for a full token.
+pub async fn login_2fa(
+    axum::extract::State(pool): axum::extract::State<PgPool>,
+    headers: axum::http::HeaderMap,
+    Json(input): Json<TwoFaCodeInput>,
+) -> Result<Json<LoginResponse>, AppError> {
+    let mfa_token = bearer(&headers).ok_or(AppError::Unauthorized)?;
+    let claims = decode_claims(&mfa_token)?;
+    if claims.role != "mfa" {
+        return Err(AppError::Unauthorized);
+    }
+    let username = claims.sub;
+
+    let row: Option<(bool, Option<String>)> =
+        sqlx::query_as("SELECT totp_enabled, totp_secret FROM admins WHERE username = $1")
+            .bind(&username)
+            .fetch_optional(&pool)
+            .await?;
+    let Some((true, Some(secret))) = row else {
+        return Err(AppError::Unauthorized);
+    };
+    if !verify_totp(&secret, &username, &input.code)? {
+        return Err(AppError::Unauthorized);
+    }
+
+    let token = make_token(&username, "admin")?;
+    Ok(Json(LoginResponse {
+        token: Some(token),
+        requires_2fa: false,
+        mfa_token: None,
+        twofa_enabled: true,
+    }))
+}
+
+/// GET /api/admin/2fa/status — whether 2FA is enabled for the current admin.
+pub async fn twofa_status(
+    admin: AdminUser,
+    axum::extract::State(pool): axum::extract::State<PgPool>,
+) -> Result<Json<TwoFaStatusResponse>, AppError> {
+    let (enabled,): (bool,) =
+        sqlx::query_as("SELECT totp_enabled FROM admins WHERE username = $1")
+            .bind(&admin.0)
+            .fetch_one(&pool)
+            .await?;
+    Ok(Json(TwoFaStatusResponse { enabled }))
+}
+
+/// POST /api/admin/2fa/setup — generate a fresh secret (not yet enabled).
+pub async fn twofa_setup(
+    admin: AdminUser,
+    axum::extract::State(pool): axum::extract::State<PgPool>,
+) -> Result<Json<TwoFaSetupResponse>, AppError> {
+    let (enabled,): (bool,) =
+        sqlx::query_as("SELECT totp_enabled FROM admins WHERE username = $1")
+            .bind(&admin.0)
+            .fetch_one(&pool)
+            .await?;
+    if enabled {
+        return Err(AppError::BadRequest("2FA is already enabled".into()));
+    }
+
+    let secret = Secret::generate_secret().to_encoded().to_string();
+    let totp = totp_from_secret(&secret, &admin.0)?;
+    let otpauth_url = totp.get_url();
+
+    sqlx::query("UPDATE admins SET totp_secret = $1 WHERE username = $2")
+        .bind(&secret)
+        .bind(&admin.0)
+        .execute(&pool)
+        .await?;
+
+    Ok(Json(TwoFaSetupResponse {
+        secret,
+        otpauth_url,
+    }))
+}
+
+/// POST /api/admin/2fa/enable — confirm a code and turn 2FA on.
+pub async fn twofa_enable(
+    admin: AdminUser,
+    axum::extract::State(pool): axum::extract::State<PgPool>,
+    Json(input): Json<TwoFaCodeInput>,
+) -> Result<Json<TwoFaStatusResponse>, AppError> {
+    let row: Option<(Option<String>, bool)> =
+        sqlx::query_as("SELECT totp_secret, totp_enabled FROM admins WHERE username = $1")
+            .bind(&admin.0)
+            .fetch_optional(&pool)
+            .await?;
+    let Some((Some(secret), enabled)) = row else {
+        return Err(AppError::BadRequest("run setup first".into()));
+    };
+    if enabled {
+        return Err(AppError::BadRequest("2FA is already enabled".into()));
+    }
+    if !verify_totp(&secret, &admin.0, &input.code)? {
+        return Err(AppError::BadRequest("invalid code".into()));
+    }
+
+    sqlx::query("UPDATE admins SET totp_enabled = TRUE WHERE username = $1")
+        .bind(&admin.0)
+        .execute(&pool)
+        .await?;
+    Ok(Json(TwoFaStatusResponse { enabled: true }))
+}
+
+/// POST /api/admin/2fa/disable — turn 2FA off (requires a current code).
+pub async fn twofa_disable(
+    admin: AdminUser,
+    axum::extract::State(pool): axum::extract::State<PgPool>,
+    Json(input): Json<TwoFaCodeInput>,
+) -> Result<Json<TwoFaStatusResponse>, AppError> {
+    let row: Option<(Option<String>, bool)> =
+        sqlx::query_as("SELECT totp_secret, totp_enabled FROM admins WHERE username = $1")
+            .bind(&admin.0)
+            .fetch_optional(&pool)
+            .await?;
+    let Some((Some(secret), true)) = row else {
+        return Err(AppError::BadRequest("2FA is not enabled".into()));
+    };
+    if !verify_totp(&secret, &admin.0, &input.code)? {
+        return Err(AppError::BadRequest("invalid code".into()));
+    }
+
+    sqlx::query("UPDATE admins SET totp_enabled = FALSE, totp_secret = NULL WHERE username = $1")
+        .bind(&admin.0)
+        .execute(&pool)
+        .await?;
+    Ok(Json(TwoFaStatusResponse { enabled: false }))
 }
 
 /// POST /api/account/register — create an app-user account.
