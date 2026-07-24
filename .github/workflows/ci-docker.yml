@@ -25,10 +25,18 @@ on:
 
 # On PRs: build only (validate Dockerfiles). On main: build + push.
 # api/backoffice go to the self-hosted registry (needs REGISTRY_USERNAME /
-# REGISTRY_PASSWORD repo secrets matching its htpasswd); app/landing stay on GHCR.
+# REGISTRY_PASSWORD from the `prod` environment matching its htpasswd);
+# app/landing stay on GHCR.
+#
+# The `prod` environment holds:
+#   - var  API_URL           -> baked into app/backoffice as NEXT_PUBLIC_API_URL
+#   - secret REGISTRY_USERNAME / REGISTRY_PASSWORD -> self-hosted registry login
+# It is used only on push (build + push); PRs build without it so environment
+# protection rules never block Dockerfile validation.
 jobs:
   images:
     runs-on: ubuntu-latest
+    environment: ${{ github.event_name != 'pull_request' && 'prod' || '' }}
     permissions:
       contents: read
       packages: write
@@ -84,7 +92,12 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
-          build-args: ${{ matrix.build_args }}
+          # Static export bakes NEXT_PUBLIC_API_URL at build time, so the prod
+          # API URL must be passed here. Web images only; skipped when API_URL
+          # is unset (e.g. PR builds) so the Dockerfile default is used instead.
+          build-args: |
+            ${{ matrix.build_args }}
+            ${{ (matrix.image != 'api' && vars.API_URL != '') && format('NEXT_PUBLIC_API_URL={0}', vars.API_URL) || '' }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ${{ steps.img.outputs.name }}:latest

@@ -5,6 +5,8 @@ pub mod routes;
 pub mod seed;
 
 use axum::{
+    extract::State,
+    http::StatusCode,
     routing::{delete, get, post, put},
     Json, Router,
 };
@@ -26,6 +28,7 @@ pub struct HealthResponse {
     pub version: &'static str,
 }
 
+/// Liveness probe — does not touch the database.
 #[utoipa::path(get, path = "/health", tag = "System",
     responses((status = 200, body = HealthResponse)))]
 pub async fn health() -> Json<HealthResponse> {
@@ -33,6 +36,42 @@ pub async fn health() -> Json<HealthResponse> {
         status: "ok",
         version: env!("CARGO_PKG_VERSION"),
     })
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct HealthDbResponse {
+    pub status: &'static str,
+    pub db: &'static str,
+}
+
+/// Readiness probe — verifies the database round-trips.
+/// Returns 503 when the database is unreachable so orchestrators can pull
+/// the instance from rotation without restarting it.
+#[utoipa::path(get, path = "/health/db", tag = "System",
+    responses(
+        (status = 200, body = HealthDbResponse),
+        (status = 503, body = HealthDbResponse),
+    ))]
+pub async fn health_db(State(pool): State<PgPool>) -> (StatusCode, Json<HealthDbResponse>) {
+    match sqlx::query_scalar::<_, i32>("SELECT 1")
+        .fetch_one(&pool)
+        .await
+    {
+        Ok(_) => (
+            StatusCode::OK,
+            Json(HealthDbResponse { status: "ok", db: "up" }),
+        ),
+        Err(e) => {
+            tracing::error!("db health failed: {e}");
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(HealthDbResponse {
+                    status: "degraded",
+                    db: "down",
+                }),
+            )
+        }
+    }
 }
 
 struct SecurityAddon;
@@ -53,6 +92,7 @@ impl Modify for SecurityAddon {
     modifiers(&SecurityAddon),
     paths(
         health,
+        health_db,
         auth::login,
         auth::register, auth::user_login,
         routes::list_categories, routes::create_category, routes::update_category, routes::delete_category,
@@ -62,6 +102,7 @@ impl Modify for SecurityAddon {
     ),
     components(schemas(
         HealthResponse,
+        HealthDbResponse,
         models::Category, models::CategoryInput,
         models::Answer, models::AnswerInput,
         models::Question, models::QuestionInput,
@@ -82,6 +123,7 @@ pub fn app(pool: PgPool) -> Router {
 
     Router::new()
         .route("/health", get(health))
+        .route("/health/db", get(health_db))
         .route("/api/auth/login", post(auth::login))
         .route("/api/auth/login/2fa", post(auth::login_2fa))
         // admin 2FA management

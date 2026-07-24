@@ -3,7 +3,7 @@
 #   docker build -f Dockerfile.web --build-arg APP=app .
 ARG APP
 
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 RUN corepack enable
 WORKDIR /repo
 

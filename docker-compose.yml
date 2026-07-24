@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     ports:
       - "5433:5432"
@@ -8,6 +8,9 @@ services:
       POSTGRES_USER: polozi
       POSTGRES_PASSWORD: polozi
       POSTGRES_DB: polozi
+      # postgres:18 moved the default PGDATA to a version subdir; pin it back to
+      # the mounted volume path so the entrypoint doesn't abort on it.
+      PGDATA: /var/lib/postgresql/data
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

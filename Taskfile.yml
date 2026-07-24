@@ -9,10 +9,15 @@ version: '3'
 #   task landing    -> marketing landing       :3000
 #   task db:up      -> start postgres
 #   task down       -> stop postgres
+#   task test       -> run backend test suite (fast, needs db)
+#   task test:api   -> run Rust backend e2e tests (needs db)
+#   task test:e2e   -> run Playwright e2e in Docker (full stack, self-contained)
 
 vars:
   COMPOSE: docker compose
   PG_USER: polozi
+  # Postgres is published on host port 5433 (see docker-compose.yml)
+  TEST_DATABASE_URL: postgres://polozi:polozi@localhost:5433/polozi
 
 tasks:
   default:
@@ -84,6 +89,52 @@ tasks:
     dir: apps/landing
     cmds:
       - pnpm dev
+
+  test:
+    desc: Run all test suites
+    deps: [test:api]
+
+  test:api:
+    desc: 'Run the Rust backend e2e tests (waits for db, isolated test DBs)'
+    deps: [db:wait]
+    dir: apps/api
+    env:
+      TEST_DATABASE_URL: '{{.TEST_DATABASE_URL}}'
+    cmds:
+      - cargo test
+
+  test:e2e:
+    desc: 'Run Playwright e2e in Docker (full stack: db+api+app+backoffice)'
+    cmds:
+      - |
+        set -e
+        # Hermetic credentials: the stack pulls only public images, so use a
+        # throwaway docker config with no credsStore. This keeps the run
+        # independent of private-registry logins and sidesteps broken
+        # credential helpers (e.g. docker-credential-desktop under WSL).
+        CFG="$(mktemp -d)"
+        printf '{"auths":{}}' > "$CFG/config.json"
+        export DOCKER_CONFIG="$CFG"
+        C="{{.COMPOSE}} -f docker-compose.e2e.yml -p polozi-e2e"
+        trap '$C down -v --remove-orphans >/dev/null 2>&1 || true; rm -rf "$CFG"' EXIT
+        $C down -v --remove-orphans >/dev/null 2>&1 || true
+        $C up --build --exit-code-from playwright
+
+  test:e2e:local:
+    desc: 'Run Playwright e2e locally against running dev servers (task dev)'
+    dir: e2e
+    cmds:
+      - npm install
+      - npx playwright install chromium
+      - npx playwright test
+
+  test:e2e:ui:
+    desc: 'Open Playwright UI mode locally (needs dev servers running)'
+    dir: e2e
+    cmds:
+      - npm install
+      - npx playwright install chromium
+      - npx playwright test --ui
 
   build:
     desc: Build all apps (turbo) + release backend

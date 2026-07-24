@@ -1,0 +1,13 @@
+{
+  "name": "polozi-e2e",
+  "private": true,
+  "description": "Playwright end-to-end tests for the Položi! web stack",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}
